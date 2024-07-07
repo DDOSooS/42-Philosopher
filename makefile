@@ -7,28 +7,25 @@ CC = cc
 CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3
 # CFLAGS = -Wall -Wextra -Werror -fsanitize=thread -g3 
 
-SRC = ./src/main.c
+SRC = ./src/main.c ./src/parsing.c \
+	./src/philo_routine_helper.c ./src/philos_routine.c \
+	./src/ininting_data.c ./src/check_simulation.c
 OBJ = $(SRC:.c=.o)
 RM = rm -rf
 
 all: $(NAME)
 
-$(NAME): $(OBJ) $(LIBFT)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBFT) 
+$(NAME): $(OBJ) 
+	$(CC) $(CFLAGS) $^ -o $@ 
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
-$(LIBFT):
-	$(MAKE) -C ./includes/libft
-
 clean:
 	$(RM) $(OBJ)
-	$(MAKE) -C ./includes/libft clean
 
 fclean: clean
 	$(RM) $(NAME)
-	$(MAKE) -C ./includes/libft fclean
 
 re: fclean all
 

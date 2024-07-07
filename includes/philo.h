@@ -6,7 +6,7 @@
 /*   By: aghergho <aghergho@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 19:57:23 by aghergho          #+#    #+#             */
-/*   Updated: 2024/07/07 19:19:03 by aghergho         ###   ########.fr       */
+/*   Updated: 2024/07/07 23:39:05 by aghergho         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,11 +22,11 @@
 # include <time.h>
 # include <unistd.h>
 
-#define COLOR_GREEN "\033[0;32m"
-#define COLOR_RESET "\033[0m"
-#define COLOR_RED "\033[0;31m"
-#define YELLOW "\033[1;33m"
-#define BLUE "\033[1;34m"
+# define COLOR_GREEN "\033[0;32m"
+# define COLOR_RESET "\033[0m"
+# define COLOR_RED "\033[0;31m"
+# define YELLOW "\033[1;33m"
+# define BLUE "\033[1;34m"
 
 typedef struct philo
 {
@@ -60,7 +60,21 @@ typedef struct table
 	pthread_mutex_t	*forks;
 	t_philo			*philo;
 }					t_table;
-void set_end_simulation(t_table **table, int philo_id);
-int					check_end_game(t_philo **philo);
-int check_set_end_simulation(t_philo *philo);
+long				ft_itol(const char *nptr);
+void				free_ressoueces(t_table *table);
+void				print_status(int state, t_table **table, int philo_id);
+size_t				get_current_time_ms(void);
+int					ft_usleep(size_t milliseconds);
+void				eating_routine(t_philo **philo);
+void				sleeping_routine(t_philo **philo);
+void				synchronise_threads(t_table **table);
+void				launch_one_philo(t_philo *philo);
+int					check_end_simulation(t_table **data);
+void				generate_philos(t_table **table, char **args);
+void				launch_one_philo(t_philo *philo);
+int					ft_validate_args(char **av);
+int					ft_check_args(int ac, char **av);
+void				set_end_simulation(t_table **table, int philo_id);
+t_table				*ft_init_data(char **av);
+int					check_set_end_simulation(t_philo *philo);
 #endif
