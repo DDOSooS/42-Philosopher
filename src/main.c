@@ -6,7 +6,7 @@
 /*   By: aghergho <aghergho@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 20:01:35 by aghergho          #+#    #+#             */
-/*   Updated: 2024/07/07 02:19:24 by aghergho         ###   ########.fr       */
+/*   Updated: 2024/07/07 19:35:31 by aghergho         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -259,21 +259,21 @@ void	print_status(int state, t_table **table, int philo_id)
 	curr_time = get_current_time_ms();
 	pthread_mutex_lock(&(*table)->write_mx);
 	if (!state && !check_end_simulation(table))
-		printf("%ld %d has taken a fork\n", curr_time - (*table)->start_timing, philo_id);
+		printf("%ld %d has taken a fork\n", curr_time - (*table)->start_timing, philo_id + 1);
 	else if (state == 1 && !check_end_simulation(table))
-		printf(COLOR_GREEN "%ld %d is eating 🍪" COLOR_RESET "\n", curr_time - (*table)->start_timing, philo_id);
+		printf(COLOR_GREEN "%ld %d is eating 🍪" COLOR_RESET "\n", curr_time - (*table)->start_timing, philo_id + 1);
 	else if (state == 2 && !check_end_simulation(table))
-		printf(BLUE "%ld %d is slepping 😴"COLOR_RESET"\n", curr_time - (*table)->start_timing, philo_id);
+		printf(BLUE "%ld %d is slepping 😴"COLOR_RESET"\n", curr_time - (*table)->start_timing, philo_id + 1);
 	else if (state == 3 && !check_end_simulation(table))
-		printf(YELLOW "%ld %d is thinking 💡"COLOR_RESET"\n", curr_time - (*table)->start_timing, philo_id);
+		printf(YELLOW "%ld %d is thinking 💡"COLOR_RESET"\n", curr_time - (*table)->start_timing, philo_id + 1);
 	else if (state == 4 && !check_end_simulation(table))
-		printf("%ld %d  died 😵\n", curr_time - (*table)->start_timing, philo_id);
+		printf("%ld %d  died 😵\n", curr_time - (*table)->start_timing, philo_id + 1);
 	pthread_mutex_unlock(&(*table)->write_mx);
 }
   
 void	eating_routine(t_philo **philo)
 {
-	if (check_end_simulation(&(*philo)->data))
+	if (check_end_simulation(&(*philo)->data) && !check_set_end_simulation(*philo))
 		return ;
 	pthread_mutex_lock((*philo)->fst_fork);
 	print_status(0, &(*philo)->data, (*philo)->id);
@@ -298,8 +298,8 @@ void	eating_routine(t_philo **philo)
  
 void	sleeping_routine(t_philo **philo)
 {
-    if (check_end_simulation(&(*philo)->data))
-		return ;
+    if (check_end_simulation(&(*philo)->data) && check_set_end_simulation(*philo))
+		return ;		
 	print_status(2, &(*philo)->data, (*philo)->id);
     ft_usleep((*philo)->time_tsleep);        
 }
@@ -313,7 +313,7 @@ void	*start_routine(void *data)
 	pthread_mutex_lock(&philo->meals_mx);
 	philo->last_meal = get_current_time_ms();
 	pthread_mutex_unlock(&philo->meals_mx);
-	while (!check_end_simulation(&philo->data))
+	while (!check_end_simulation(&philo->data) && !check_set_end_simulation(philo))
 	{
 		eating_routine(&philo);
 		sleeping_routine(&philo);
@@ -321,6 +321,7 @@ void	*start_routine(void *data)
 	}
 	return (NULL);
 }
+
 
 int	check_die_philo(t_philo *philo)
 {
@@ -330,25 +331,43 @@ int	check_die_philo(t_philo *philo)
 	status = 0;
 	pthread_mutex_lock(&(philo)->lastml_mx);
 	curr_time = get_current_time();
-	if (curr_time - (philo)->last_meal > (philo)->time_tdie + 11)
+	if (curr_time - (philo)->last_meal > (philo)->time_tdie)
 	{
+		// printf("%ld ==die time\n", curr_time - philo->ls);
 		print_status(4, &philo->data, philo->id);
+		set_end_simulation(&philo->data, philo->id);
 		status = 1;
 	}
 	pthread_mutex_unlock(&(philo)->lastml_mx);
 	return (status);
 }
 
-int	check_full_eating(t_table *table)
+int	check_full_eating(t_table **table, int philo_id)
 {
 	int	status;
 
 	status = 0;
-	pthread_mutex_lock(&table->meals_mx);
-	if (table->meals == table->n_philo)
+	pthread_mutex_lock(&(*table)->meals_mx);
+	if ((*table)->meals == (*table)->n_philo)
+	{
 		status = 1;
-	pthread_mutex_unlock(&table->meals_mx);
+		set_end_simulation(table, philo_id);
+	}
+	pthread_mutex_unlock(&(*table)->meals_mx);
 	return (status);
+}
+
+int check_set_end_simulation(t_philo *philo)
+{
+	if (check_die_philo(philo) || check_full_eating(&philo->data, philo->id))
+		return (1);
+	return (0);
+}
+void set_end_simulation(t_table **table, int philo_id)
+{
+	pthread_mutex_lock(&(*table)->done_mx);
+	(*table)->done_flag = philo_id + 1;
+	pthread_mutex_unlock(&(*table)->done_mx);
 }
 
 void	*supervisor_routine(void *data)
@@ -358,19 +377,14 @@ void	*supervisor_routine(void *data)
 
 	table = (t_table *)data;
 	synchronise_threads(&table);
-	ft_usleep(60);
-	while (1)
+	ft_usleep(100);
+	while (!check_end_simulation(&table))
 	{
 		i = -1;
 		while (++i < table->n_philo && !check_end_simulation(&table))
 		{
-			if (check_full_eating(table) || check_die_philo(&table->philo[i]))
-			{
-				pthread_mutex_lock(&(table)->done_mx);
-				table->done_flag = i + 1;
-				pthread_mutex_unlock(&(table)->done_mx);
+			if (check_set_end_simulation(&table->philo[i]))
 				return (NULL);
-			}
 		}
 	}
 	return (NULL);
@@ -391,9 +405,9 @@ void	launch_simulation(t_table **table)
 	(*table)->start_timing = get_current_time_ms();
 	pthread_mutex_unlock(&(*table)->start_smx);
 	i = -1;
-	pthread_join(supervisor, NULL);
 	while (++i < (*table)->n_philo)
 		pthread_join((*table)->philo[i].thread, NULL);
+	pthread_join(supervisor, NULL);
 }
 
 void launch_one_philo(t_philo *philo)

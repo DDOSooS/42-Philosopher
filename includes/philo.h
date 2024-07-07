@@ -6,7 +6,7 @@
 /*   By: aghergho <aghergho@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 19:57:23 by aghergho          #+#    #+#             */
-/*   Updated: 2024/07/07 02:16:18 by aghergho         ###   ########.fr       */
+/*   Updated: 2024/07/07 19:19:03 by aghergho         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,7 +60,7 @@ typedef struct table
 	pthread_mutex_t	*forks;
 	t_philo			*philo;
 }					t_table;
-
+void set_end_simulation(t_table **table, int philo_id);
 int					check_end_game(t_philo **philo);
-
+int check_set_end_simulation(t_philo *philo);
 #endif
