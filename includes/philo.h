@@ -6,7 +6,7 @@
 /*   By: aghergho <aghergho@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 19:57:23 by aghergho          #+#    #+#             */
-/*   Updated: 2024/07/06 00:10:41 by aghergho         ###   ########.fr       */
+/*   Updated: 2024/07/07 02:16:18 by aghergho         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,36 +21,6 @@
 # include <sys/time.h>
 # include <time.h>
 # include <unistd.h>
-
-// typedef struct philo
-// {
-//     int                 id;
-//     pthread_t           thread;
-//     size_t              start_time;
-//     size_t              last_time;
-//     int                 status;
-//     int                 n_meals;
-//     size_t              time_tsleep;
-//     size_t              time_teat;
-//     size_t              time_tdie;
-//     int                 n_meals_teat;
-//     pthread_mutex_t     *r_fork;
-//     pthread_mutex_t     *l_fork;
-//     pthread_mutex_t dead_flag;
-//     struct philo        *next;
-//     struct philo        *prev;
-// }   t_philo;
-
-// typedef struct dining
-// {
-//     int             dead_flag;
-//     int             done_flag;
-//     int             num_philo;
-//     pthread_mutex_t *forks;
-//     pthread_mutex_t tabel_mx;
-//     pthread_mutex_t dead_mx;
-//     t_philo         *philo;
-// }   t_dpp;
 
 #define COLOR_GREEN "\033[0;32m"
 #define COLOR_RESET "\033[0m"

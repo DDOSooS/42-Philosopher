@@ -6,7 +6,7 @@
 /*   By: aghergho <aghergho@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/11 20:01:35 by aghergho          #+#    #+#             */
-/*   Updated: 2024/07/06 00:50:25 by aghergho         ###   ########.fr       */
+/*   Updated: 2024/07/07 02:19:24 by aghergho         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,24 +103,22 @@ int	ft_validate_args(char **av)
 	return (1);
 }
 
-size_t	get_current_time(void)
-{
-	struct timeval	tv;
-	size_t			curr_time;
-
-	gettimeofday(&tv, NULL);
-	curr_time = (tv.tv_sec * 1000 + tv.tv_usec / 1000);
-	return (curr_time);
-}
-
 size_t	get_current_time_ms(void)
 {
-	struct timeval	tv;
-	size_t			curr_time;
+	struct timeval	time;
 
-	gettimeofday(&tv, NULL);
-	curr_time = (tv.tv_sec * 1000 + tv.tv_usec / 1000);
-	return (curr_time);
+	if (gettimeofday(&time, NULL) == -1)
+		write(2, "gettimeofday() error\n", 22);
+	return (time.tv_sec * 1000 + time.tv_usec / 1000);
+}
+
+size_t	get_current_time(void)
+{
+	struct timeval	time;
+
+	if (gettimeofday(&time, NULL) == -1)
+		write(2, "gettimeofday() error\n", 22);
+	return (time.tv_sec * 1000 + time.tv_usec / 1000);
 }
 
 int	ft_usleep(size_t milliseconds)
@@ -129,12 +127,12 @@ int	ft_usleep(size_t milliseconds)
 
 	start = get_current_time();
 	while ((get_current_time() - start) < milliseconds)
-		usleep(500);
+		usleep(600);
 	return (0);
 }
 
 /*
-	1 => eating
+	1 => eating4 410 200 200
 	2 => thinking
 	3 => sleeping
 */
@@ -186,10 +184,15 @@ void	generate_philos(t_table **table, char **args)
 void	init_mutexes(t_table **table)
 {
 	// printf("======(%p)======<<<<<<<<<\n",table);
+    int     i;
+
+    i = -1;
 	pthread_mutex_init(&(*table)->meals_mx, NULL);
 	pthread_mutex_init(&(*table)->done_mx, NULL);
 	pthread_mutex_init(&(*table)->write_mx, NULL);
 	pthread_mutex_init(&(*table)->start_smx, NULL);
+    while (++i < (*table)->n_philo)
+        pthread_mutex_init(&(*table)->forks[i], NULL);    
 }
 
 t_table	*ft_init_data(char **av)
@@ -284,16 +287,21 @@ void	eating_routine(t_philo **philo)
 	pthread_mutex_unlock(&(*philo)->meals_mx);
 	print_status(1, &(*philo)->data, (*philo)->id);
 	if (!check_end_simulation(&(*philo)->data))
-		ft_usleep((*philo)->time_teat);
+        ft_usleep((*philo)->time_teat);
+    pthread_mutex_lock(&(*philo)->data->meals_mx);
+    if ((*philo)->n_meals_eat == (*philo)->data->n_meals_teat)
+        (*philo)->data->meals++;
+    pthread_mutex_unlock(&(*philo)->data->meals_mx);
 	pthread_mutex_unlock((*philo)->fst_fork);
 	pthread_mutex_unlock((*philo)->scd_fork);
 }
  
 void	sleeping_routine(t_philo **philo)
 {
+    if (check_end_simulation(&(*philo)->data))
+		return ;
 	print_status(2, &(*philo)->data, (*philo)->id);
-	if (!check_end_simulation(&(*philo)->data))
-		ft_usleep((*philo)->time_tsleep);
+    ft_usleep((*philo)->time_tsleep);        
 }
 
 void	*start_routine(void *data)
@@ -307,11 +315,9 @@ void	*start_routine(void *data)
 	pthread_mutex_unlock(&philo->meals_mx);
 	while (!check_end_simulation(&philo->data))
 	{
-		// printf("philo ->id (%d)===cur_time(%ld)===\n", philo->id, get_current_time());
 		eating_routine(&philo);
 		sleeping_routine(&philo);
-		// if (philo->data->n_philo % 2)
-			print_status(3, &philo->data, philo->id);
+        print_status(3, &philo->data, philo->id);
 	}
 	return (NULL);
 }
@@ -322,17 +328,14 @@ int	check_die_philo(t_philo *philo)
 	size_t	curr_time;
 
 	status = 0;
-	// printf("===============================(check die philo)==============================\n");
 	pthread_mutex_lock(&(philo)->lastml_mx);
 	curr_time = get_current_time();
 	if (curr_time - (philo)->last_meal > (philo)->time_tdie + 11)
 	{
-		// printf("===================(%ld)======(%ld)=currr(%ld)===========\n", curr_time - philo->last_meal, philo->last_meal,curr_time);
 		print_status(4, &philo->data, philo->id);
 		status = 1;
 	}
 	pthread_mutex_unlock(&(philo)->lastml_mx);
-	// printf("status11111 === (%d)======\n", status);
 	return (status);
 }
 
@@ -341,12 +344,10 @@ int	check_full_eating(t_table *table)
 	int	status;
 
 	status = 0;
-	// printf("===============================(check full philo)============ ==================\n");
 	pthread_mutex_lock(&table->meals_mx);
 	if (table->meals == table->n_philo)
 		status = 1;
 	pthread_mutex_unlock(&table->meals_mx);
-	// printf("status === (%d)======\n", status);
 	return (status);
 }
 
@@ -357,8 +358,7 @@ void	*supervisor_routine(void *data)
 
 	table = (t_table *)data;
 	synchronise_threads(&table);
-	ft_usleep(table->time_teat);
-	// printf("===============================(check  philo routine)==============================\n");
+	ft_usleep(60);
 	while (1)
 	{
 		i = -1;
@@ -396,6 +396,15 @@ void	launch_simulation(t_table **table)
 		pthread_join((*table)->philo[i].thread, NULL);
 }
 
+void launch_one_philo(t_philo *philo)
+{
+    philo->data->start_timing = get_current_time_ms();
+    print_status(0, &philo->data, 0);
+    ft_usleep(philo->time_tdie);
+    print_status(4, &philo->data, 0);
+
+}
+
 int	main(int ac, char **av)
 {
 	t_table	*simulation;
@@ -407,155 +416,13 @@ int	main(int ac, char **av)
 		simulation = ft_init_data(av);
 		if (!simulation)
 			return (printf("args aren't valid ;( \n"), 2);
-		launch_simulation(&simulation);
-		// free_ressoueces(simulation);
-		printf("=================num of meals(%d)(%d)===============\n",
-			simulation->philo[0].n_meals_eat, simulation->philo[1].n_meals_eat);
+        if (simulation->n_philo == 1)
+            launch_one_philo(simulation->philo);
+        else
+		    launch_simulation(&simulation);
+		free_ressoueces(simulation);
 	}
 	else
 		printf("Please try running the program again with this format ./exe <number_of_philo> <time_to_die> <time_to_eat> <time_to_sleep> <number_of_times_each_philosopher_must_eat>\n");
 	return (0);
 }
-
-/*
-
-// t_philo *ft_new_philo(int id, int n_philo, t_table **table, char **av)
-// {
-//     t_philo *new;
-
-//     new = malloc(sizeof(t_philo));
-//     if (!new)
-//         return (NULL);
-
-//     // Initialize all members of 'new'
-//     new->id = id;
-//     new->n_meals_eat = 0;
-//     new->last_meal = 0;
-//     new->routine_type = get_routine_type(id, n_philo);
-//     new->n_philos = n_philo;
-//     new->time_tdie = ft_itol(av[2]);
-//     new->time_teat = ft_itol(av[3]);
-//     new->time_tsleep = ft_itol(av[4]);
-//     new->n_meals_teat = -1;
-//     if (av[5])
-//         new->n_meals_teat = ft_itol(av[5]);
-
-//     // Ensure 'l_fork' and 'r_fork' are initialized properly
-//     if (id < n_philo) {
-//         new->l_fork = &(*table)->forks[id];
-//         // printf("--------->>>left fork(%p)----(%d)---\n",
-	(void *)new->l_fork, new->id);
-//     }
-
-//     if (id + 1 == n_philo) {
-//         new->r_fork = &(*table)->forks[0];
-//         // printf("--------->>>right fork(%p)-----22--\n",
-	(void *)new->r_fork);
-//     } else {
-//         new->r_fork = &(*table)->forks[new->id + 1];
-//         // printf("--------->>>right fork(%p)-----11-(%d)-\n",
-	(void *)new->r_fork, new->id);
-//     }
-
-//    
-	// printf("==================================================================================\n");
-//     // printf("------right%p---left-%p---(philo_id)(%d)---------\n",
-	new->r_fork, new->l_fork, new->id);
-//    
-	// printf("==================================================================================\n");
-//     new->next = NULL;
-//     // var_dump_forks((*table)->forks,new->n_philos);;
-//     return (new);
-// }
-
-// int ft_gen_philo(t_philo **root, int id, t_table **simulation, char **av)
-// {
-//     t_philo *new;
-//     t_philo *tmp;
-//     int     i;
-
-//     i = -1;
-//     new = ft_new_philo(id, (*simulation)->n_philo, simulation, av);
-//     if (!new)
-//         return (0);
-
-//     if (!*root)
-//     {
-//         *root = new;
-//         return (1);
-//     }
-//     tmp = *root;
-//     while (i <  (*simulation)->n_philo && tmp->next)
-//     {
-//         tmp = tmp->next;
-//         i++;
-//     }
-//     // tmp->data = *simulation;
-//     tmp->next = new;
-//     // new->prev = tmp;
-//     // new->next = *root;
-//     return (1);
-// }
-
-// void    ft_free_philo(t_philo *philos, int n_philo)
-// {
-//     int         i;
-//     t_philo     *tmp;
-
-//     i = 0;
-//     while (i < n_philo)
-//     {
-//         tmp = philos->next;
-//         free(tmp);
-//         philos = tmp;
-//     }
-// }
-
-// t_philo *ft_gen_philos(t_table **simulation, char **av)
-// {
-//     t_philo     *tmp;
-//     int         i;
-
-//     i = 0;
-//     tmp = NULL;
-//     while (i < (*simulation)->n_philo)
-//     {
-//         if (! ft_gen_philo(&tmp, i, simulation, av))
-//             return (ft_free_philo(tmp, (*simulation)->n_philo), NULL);
-//         i++;
-//     }
-//     return (tmp);
-// }
-
-// void    var_dump_philos(t_philo *philo)
-// {
-//     printf(">>>>> start of philos <<\n");
-//     while (philo)
-//     {
-//         printf("philo :-ID (%d)--(%ld)--(%d)--(%p)(%p)\n", philo->id ,
-	philo->time_tdie, philo->n_philos, philo->r_fork, philo->l_fork);
-//         philo = philo->next;
-//     }
-
-//     printf(">>>>>end of philos <<");
-// }
-
-// t_table  *ft_set_attr(char **av)
-// {
-//     t_table   *table;
-
-//     table = malloc (sizeof(t_table));
-//     if (!table)
-//         return (NULL);
-//     table->dead_flag = 0;
-//     table->done_flag = 0;
-//     table->cur_routine = 0;
-//     table->n_philo = ft_itol(av[1]);
-//     table->forks = malloc(sizeof(pthread_mutex_t) * table->n_philo);
-//     if (!table->forks)
-//         return (free(table), NULL);
-//     // var_dump_forks(table->forks,table->n_philo);
-//     table->philo = ft_gen_philos(&table, av);
-//     return (table);
-// }
-*/

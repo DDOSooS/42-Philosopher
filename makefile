@@ -3,7 +3,7 @@ NAME = philo
 LIBFT = ./includes/libft/libft.a
 
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -fsanitize=thread -g3 
+CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3 
 
 SRC = ./src/main.c
 OBJ = $(SRC:.c=.o)
